@@ -158,7 +158,9 @@ O `MessageListener` fica em `presentation.messaging` e segue as mesmas regras de
 
 Tanto projetos single-module quanto multi-module devem possuir um teste arquitetural com ArchUnit. A estrutura de diretórios, sozinha, não impede imports proibidos. Com `Service` e `Core` sob `business` e `Datastore` sob `data`, o teste ArchUnit é o mecanismo que garante regras como `business.core` não depender de `business.service` e apenas `data.datastore` ser visível para fora de `data`.
 
-No projeto single-module, o teste deve ficar em `src/test/java/com/example/app/architecture`, separado das camadas de produção e executado junto com a suíte normal. As regras devem verificar os limites entre `Presentation`, `Service`, `Core`, `Datastore` e `Data`. O exemplo completo está em [Single-Module Architecture Test.md](Single-Module%20Architecture%20Test.md).
+O conjunto de regras vai além da direção das dependências entre camadas e cobre: a proibição de a `Presentation` chamar `UseCase` diretamente; o isolamento do `Core` contra frameworks e infraestrutura (só domínio e biblioteca padrão); o limite dos modelos por sufixo (`DTO` preso à `Presentation`; `Entity` e `Message` de saída presos à `Data`); sufixo, pacote e anotação de cada componente conforme a tabela de Nomenclatura e Beans; a transação restrita ao `Service`; e a ausência de ciclos entre os pacotes raiz. As regras ficam em duas classes: `LayerDependencyTest` (dependências, isolamento, modelos e transação) e `NamingConventionTest` (nomenclatura).
+
+No projeto single-module, o teste deve ficar em `src/test/java/com/example/app/architecture`, separado das camadas de produção e executado junto com a suíte normal. O exemplo completo está em [Single-Module Architecture Test.md](Single-Module%20Architecture%20Test.md).
 
 No projeto multi-module, o teste deve ficar no módulo técnico `architecture`, em `architecture/src/test`, com dependências dos módulos da aplicação apenas no escopo de testes. O exemplo completo está em [Multi-Module Architecture Test.md](Multi-Module%20Architecture%20Test.md).
 
