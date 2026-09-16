@@ -85,7 +85,7 @@ Regras:
 - Entities, modelos de API e mensagens de saída (`Message`) são exclusivos da `Data`.
 - Um tipo externo não pode aparecer em atributo, parâmetro, retorno, exceção ou contrato público de outra camada.
 - Mapeamentos entre modelos devem ser explícitos e ficar na fronteira que conhece os dois tipos: `presentation.mapper` para `DTO`/`Type`/`Event` ↔ `Model`; `data.mapper` para `Model` ↔ `Entity`/`API Model`/`Message`. O `Model` do Core é o pivô — nenhum mapper conhece `DTO` e `Entity` ao mesmo tempo.
-- Use mapper genérico apenas quando nomes, tipos e semântica forem compatíveis. Para normalização, cálculo, `null` especial, objetos aninhados, campos sensíveis ou incompatibilidade semântica, use mapper específico.
+- Todo mapper — genérico injetado direto ou nomeado — parte de `Mapper<Source, Model>`. Prefira injetar o genérico direto, sem subclasse; crie um mapper nomeado (estendendo `Mapper<Source, Model>`, com os métodos `toModel`/`fromModel`) só quando alguma direção precisar de sobrescrita. Nome de atributo diferente é o único bloqueio mecânico da cópia automática; tipo diferente, cálculo ou acoplamento escondido (ex.: a conversão automática só funcionar por causa de uma anotação pensada para outra fronteira) são critério de julgamento para sobrescrever mesmo quando a cópia automática funcionaria.
 
 ## Nomenclatura e Beans
 
@@ -121,6 +121,8 @@ Sufixo, pacote e anotação Spring esperados por tipo de componente. Os nomes us
 O `Service` prepara dados, chama o `UseCase` quando necessário, coordena `Datastore`s e controla a transação. Recebe e devolve apenas Models do Core (ou resultados do Core); a conversão para `DTO`/`Type`/`Event` fica no adaptador de entrada.
 
 O `UseCase` recebe Models do Core, aplica regras e devolve Models processados. Ele deve ser determinístico, stateless e testável sem Spring, banco, HTTP, mensageria ou SDK externo. Não mantenha estado mutável de execução nem estado compartilhado entre chamadas em atributos do `UseCase`; o estado da operação deve entrar pelos parâmetros e sair pelo resultado.
+
+Quando a regra altera um atributo do Model, o UseCase decide o novo valor e obtém uma nova instância do Model com esse valor atualizado — por exemplo, por um método do próprio Model dedicado à transição (um "wither", como `comStatus(novoStatus)`), que devolve uma cópia com o atributo alterado em vez de mutar o Model recebido. O Model não expõe mutação direta de estado.
 
 Não crie um `UseCase` quando a operação for somente conversão e uma chamada ao `Datastore`. Crie um quando houver regra de negócio, invariante, cálculo, decisão ou transformação de domínio.
 
