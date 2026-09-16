@@ -67,6 +67,8 @@ Os métodos de coleção retornam `null` quando a coleção de entrada é `null`
 
 O `ObjectMapper` fica dentro da classe, não como bean. Um `@Bean ObjectMapper` no contexto — com qualquer nome — desativa o `ObjectMapper` autoconfigurado do Spring Boot (`@ConditionalOnMissingBean`) e faz a configuração do mapper vazar para a (de)serialização HTTP.
 
+A classe `Mapper<Source, Model>` e a fábrica da próxima seção são infraestrutura compartilhada: ficam em um pacote neutro, fora de `presentation` e de `data` (ex.: `<base>.mapper` ou `shared.mapper`), porque as duas fronteiras estendem a mesma base — deixá-la em `presentation.mapper` faria um mapper nomeado de `data.mapper` importar `presentation` só para herdar, criando uma dependência da Data para a Presentation. Os mappers nomeados continuam cada um na sua fronteira.
+
 ## Fábrica: resolução dos tipos pelo ponto de injeção
 
 A fábrica resolve os tipos `Source` e `Model` a partir do ponto de injeção, sem exigir uma subclasse por fronteira. Ela lê os genéricos declarados no campo ou parâmetro e entrega um `Mapper` já tipado:
