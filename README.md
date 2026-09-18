@@ -1,5 +1,9 @@
 # Practical Clean Architecture
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)
+![ArchUnit](https://img.shields.io/badge/tested%20with-ArchUnit-brightgreen.svg)
+
 Uma arquitetura orientada ao domínio, inspirada na Clean Architecture,
 simplificada para favorecer clareza, manutenção e produtividade.
 
