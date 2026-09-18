@@ -57,7 +57,7 @@ As regras de `LayerDependencyTest` estão agrupadas em cinco blocos:
 
 1. Direção das dependências entre camadas, incluindo a proibição de a `Presentation` chamar `UseCase` diretamente.
 2. Isolamento do `Core` contra frameworks e infraestrutura: o `Core` só pode depender do próprio domínio e da biblioteca padrão.
-3. Limite dos modelos por sufixo: `DTO` preso à `Presentation`; `Entity` e `Message` de saída presos à `Data`.
+3. Limite dos modelos por sufixo: `DTO`, `Type` e `Event` presos à `Presentation`; `Entity` e `Message` de saída presos à `Data`.
 4. Transação restrita ao `Service`.
 5. Ausência de ciclos entre os pacotes raiz.
 
@@ -154,6 +154,18 @@ class LayerDependencyTest {
         .that().resideOutsideOfPackage("..data..")
         .should().dependOnClassesThat().haveSimpleNameEndingWith("Message");
 
+    // Se o domínio usar eventos de domínio (DDD) no Core, nomeie-os com outro sufixo
+    // (ex.: "DomainEvent"), para não colidir com o Event de entrada da Presentation.
+    @ArchTest
+    static final ArchRule type_nao_sai_da_presentation = noClasses()
+        .that().resideOutsideOfPackage("..presentation..")
+        .should().dependOnClassesThat().haveSimpleNameEndingWith("Type");
+
+    @ArchTest
+    static final ArchRule event_nao_sai_da_presentation = noClasses()
+        .that().resideOutsideOfPackage("..presentation..")
+        .should().dependOnClassesThat().haveSimpleNameEndingWith("Event");
+
     // 4. Transação restrita ao Service
 
     @ArchTest
@@ -179,7 +191,7 @@ class LayerDependencyTest {
 
 ## Teste de Convenções de Nomenclatura
 
-Verifica a tabela de Nomenclatura e Beans: cada componente identificado pelo sufixo do nome deve residir no pacote esperado e, quando houver, carregar a anotação Spring correspondente. Além do sufixo `Controller`, toda classe anotada com `@RestController` ou `@Controller` deve estar em `..presentation..`. As regras de anotação assumem componentes concretos, sem divisão interface/implementação; ajuste-as se o projeto usar esse padrão.
+Verifica a tabela de Nomenclatura e Beans: cada componente identificado pelo sufixo do nome deve residir no pacote esperado e, quando houver, carregar a anotação Spring correspondente. Além do sufixo `Controller`, toda classe anotada com `@RestController` ou `@Controller` deve estar em `..presentation..`. As regras de anotação assumem componentes concretos, sem divisão interface/implementação; ajuste-as se o projeto usar esse padrão. A regra de `Mapper` exclui a classe base genérica `Mapper<Source, Model>` (ver [Generic Mapper.md](Generic%20Mapper.md)), que fica em um pacote neutro fora de `presentation` e `data`.
 
 ```java
 package com.example.app.architecture;
@@ -246,6 +258,31 @@ class NamingConventionTest {
     static final ArchRule message_publishers_ficam_em_data_messaging = classes()
         .that().haveSimpleNameEndingWith("MessagePublisher")
         .should().resideInAPackage("..data.messaging..");
+
+    @ArchTest
+    static final ArchRule dtos_ficam_em_presentation_rest = classes()
+        .that().haveSimpleNameEndingWith("DTO")
+        .should().resideInAPackage("..presentation.rest..");
+
+    // Ajuste ou remova se o domínio tiver enums/values legítimos terminados em "Type"
+    // fora do contrato GraphQL (ex.: PaymentType no Core).
+    @ArchTest
+    static final ArchRule types_ficam_em_presentation_graphql = classes()
+        .that().haveSimpleNameEndingWith("Type")
+        .should().resideInAPackage("..presentation.graphql..");
+
+    @ArchTest
+    static final ArchRule events_ficam_em_presentation_messaging = classes()
+        .that().haveSimpleNameEndingWith("Event")
+        .should().resideInAPackage("..presentation.messaging..");
+
+    // Exclui a classe base genérica Mapper<Source, Model>, que fica em um pacote neutro
+    // fora de presentation e data (ex.: shared.mapper — ajuste para o pacote do projeto).
+    @ArchTest
+    static final ArchRule mappers_ficam_nas_fronteiras_presentation_ou_data = classes()
+        .that().haveSimpleNameEndingWith("Mapper")
+        .and().resideOutsideOfPackage("..shared.mapper..")
+        .should().resideInAnyPackage("..presentation.mapper..", "..data.mapper..");
 }
 ```
 
