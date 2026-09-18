@@ -52,7 +52,7 @@ dependencies {
 
 ## Teste de Dependências Arquiteturais
 
-O teste fica em `architecture/src/test`, pois esse módulo reúne no classpath de teste as classes dos demais módulos sem atribuir à `presentation` uma responsabilidade de validação global. Ele verifica os imports, que são o ponto de controle das dependências proibidas durante a codificação.
+O teste fica em `architecture/src/test`, pois esse módulo reúne no classpath de teste as classes dos demais módulos, evitando que um módulo de aplicação (como `presentation`) acumule a responsabilidade de validar as demais camadas. Ele verifica os imports, que são o ponto de controle das dependências proibidas durante a codificação.
 
 Os módulos físicos são uma decisão do projeto. `Service` e `Core` podem ficar em módulos separados ou em um único módulo `business` com os pacotes `business.service` e `business.core`; da mesma forma, `Datastore` fica sob `data.datastore`. Os padrões `..service..`, `..core..` e `..datastore..` casam com qualquer prefixo e continuam válidos nas duas organizações.
 

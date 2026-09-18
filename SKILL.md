@@ -7,6 +7,8 @@ user-invocable: true
 
 # Practical Clean Architecture
 
+> Especificação completa, diagramas e exemplos: [README.md](README.md) · Implementação de referência do mapper genérico: [Generic Mapper.md](Generic%20Mapper.md) · Testes ArchUnit: [Single-Module Architecture Test.md](Single-Module%20Architecture%20Test.md) e [Multi-Module Architecture Test.md](Multi-Module%20Architecture%20Test.md).
+
 ## Objetivo
 
 Aplicar uma arquitetura orientada ao domínio, inspirada em Clean Architecture, Hexagonal, DDD e Application Service, com o mínimo de abstrações necessário para preservar correção, segurança, clareza e manutenibilidade.
@@ -62,7 +64,7 @@ Presentation -> Service -> Core
 - `Presentation` não acessa `Datastore`, `Data`, `UseCase` nem aplica regra de domínio; usa Models do `Core` apenas como dado trocado com o `Service`.
 - `Data` não expõe seus componentes para `Presentation`, `Service` ou `Core`.
 - `UseCase` não acessa `Datastore`, Repository, API, fila, sessão de banco ou qualquer infraestrutura.
-- O `Datastore` não depende do `Service` nem da `Presentation`.
+- O `Datastore` e os demais componentes da `Data` (`data.mapper`, `data.persistence`, `data.api`, `data.messaging`) não dependem do `Service` nem da `Presentation`.
 
 `MessageListener` é um adaptador de entrada e fica na `Presentation`, par do Controller: converte o payload em `Event`, mapeia para Model do Core em `presentation.mapper` e chama o `Service`, sem acessar `Datastore` ou `Data`. `MessagePublisher` é um adaptador de saída da `Data`, acionado internamente pelo `Datastore`.
 
@@ -85,7 +87,7 @@ Regras:
 - Entities, modelos de API e mensagens de saída (`Message`) são exclusivos da `Data`.
 - Um tipo externo não pode aparecer em atributo, parâmetro, retorno, exceção ou contrato público de outra camada.
 - Mapeamentos entre modelos devem ser explícitos e ficar na fronteira que conhece os dois tipos: `presentation.mapper` para `DTO`/`Type`/`Event` ↔ `Model`; `data.mapper` para `Model` ↔ `Entity`/`API Model`/`Message`. O `Model` do Core é o pivô — nenhum mapper conhece `DTO` e `Entity` ao mesmo tempo.
-- Todo mapper — genérico injetado direto ou nomeado — parte de `Mapper<Source, Model>`. Prefira injetar o genérico direto, sem subclasse; crie um mapper nomeado (estendendo `Mapper<Source, Model>`, com os métodos `toModel`/`fromModel`) só quando alguma direção precisar de sobrescrita. Nome de atributo diferente é o único bloqueio mecânico da cópia automática; tipo diferente, cálculo ou acoplamento escondido (ex.: a conversão automática só funcionar por causa de uma anotação pensada para outra fronteira) são critério de julgamento para sobrescrever mesmo quando a cópia automática funcionaria.
+- Todo mapper — genérico injetado direto ou nomeado — parte de `Mapper<Source, Model>`. Prefira injetar o genérico direto, sem subclasse; crie um mapper nomeado (estendendo `Mapper<Source, Model>`, com os métodos `toModel`/`fromModel`) só quando alguma direção precisar de sobrescrita. Nome de atributo diferente é o único bloqueio mecânico da cópia automática; tipo diferente, cálculo ou acoplamento escondido (ex.: a conversão automática só funcionar por causa de uma anotação pensada para outra fronteira) são critério de julgamento para sobrescrever mesmo quando a cópia automática funcionaria. Implementação de referência da classe, da fábrica `prototype` e do uso no adaptador de entrada: [Generic Mapper.md](Generic%20Mapper.md).
 
 ## Nomenclatura e Beans
 
@@ -204,7 +206,7 @@ Registre cada falha uma vez, no ponto com contexto suficiente. Camadas intermedi
 
 ## Organização Java Sugerida
 
-Esta skill assume um único módulo. As camadas e os contextos de negócio são organizados como pacotes dentro desse módulo; a separação física em módulos está fora do escopo. Preserve os limites arquiteturais mesmo sem separação de classpath entre as camadas.
+Esta seção usa um projeto single-module como base: as camadas e os contextos de negócio são organizados como pacotes dentro de um único módulo. Um projeto multi-module segue os mesmos limites com módulos físicos por camada — ver [README.md](README.md) e [Multi-Module Architecture Test.md](Multi-Module%20Architecture%20Test.md). Preserve os limites arquiteturais mesmo sem separação de classpath entre as camadas.
 
 O código é agrupado em três pacotes raiz. `presentation` reúne os adaptadores de entrada (`rest`, `graphql`, `messaging`); `business` reúne `Service` e `Core`; `data` reúne `Datastore` e os adaptadores de saída. O agrupamento é apenas organizacional: as responsabilidades e a direção das dependências de cada camada permanecem as mesmas.
 
@@ -248,3 +250,4 @@ Antes de concluir uma alteração, confirme:
 - [ ] Sufixos, pacotes e anotações Spring seguem a tabela de Nomenclatura e Beans.
 - [ ] Testes unitários cobrem regras do Core e testes de integração cobrem fronteiras relevantes.
 - [ ] Imports e dependências proibidos foram verificados.
+- [ ] O teste arquitetural (ArchUnit) cobre os pacotes e sufixos alterados e continua passando.

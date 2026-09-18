@@ -62,7 +62,7 @@ O fluxo de execução pode seguir de fora para dentro e retornar com o resultado
 
 ## Direção das Dependências
 
-A direção única das dependências é de fora para dentro: módulos externos podem depender de módulos internos, mas módulos internos nunca podem depender de módulos externos. Essa regra se aplica às dependências de código, aos imports e à injeção de componentes; o fluxo de execução pode seguir o caminho inverso quando necessário.
+A direção única das dependências é de fora para dentro: camadas externas podem depender de camadas internas, mas camadas internas nunca podem depender de camadas externas. Essa regra se aplica às dependências de código, aos imports e à injeção de componentes; o fluxo de execução pode seguir o caminho inverso quando necessário.
 
 O `Core` é o núcleo da aplicação. Ele não depende de `Presentation`, `Service`, `Datastore`, `Data`, frameworks ou infraestrutura.
 
@@ -78,7 +78,7 @@ Service      -X-> Presentation
 Presentation -X-> Datastore, Data, UseCase
 Data         -X-> Service, Presentation
 Presentation -> Service, Core
-Service      -> Core, Data
+Service      -> Core, Data (somente contrato do Datastore)
 Data         -> Core
 ```
 
@@ -150,7 +150,7 @@ com.example.app
 - `data.persistence`, `data.api` e `data.messaging` contêm Repositories, Entities, ApiClients, MessagePublishers e modelos de mensagem de saída específicos das tecnologias externas.
 - Os pacotes técnicos de `data` (`data.mapper`, `data.persistence`, `data.api`, `data.messaging`) não devem ser importados por `presentation` ou `business`; somente as classes públicas de `data.datastore` podem ser consumidas por `business.service`.
 - Um contexto de negócio deve manter seus componentes próximos dentro de cada camada, incluindo os pacotes `mapper`, e evitar pacotes globais como `model`, `mapper` ou `exception` que misturem contextos.
-- Pacotes internos podem usar visibilidade de pacote (`package-private`) para esconder detalhes de implementação. Tipos públicos devem ser limitados aos contratos necessários entre módulos.
+- Pacotes internos podem usar visibilidade de pacote (`package-private`) para esconder detalhes de implementação. Tipos públicos devem ser limitados aos contratos necessários entre camadas.
 
 O `MessageListener` fica em `presentation.messaging` e segue as mesmas regras de um Controller: enxerga apenas `business.service`, sem acesso a `business.core`, `data.datastore` ou aos pacotes técnicos de `data`. Não há exceção de entrada em `data`; `data.messaging` contém somente a publicação de mensagens de saída, consumida internamente pelo `Datastore`.
 
@@ -193,7 +193,7 @@ Para os níveis acima, publicar uma mensagem é apenas mais uma operação do `D
 
 ## Limites dos Modelos
 
-Cada módulo possui seus próprios modelos. DTOs, Types e Events de entrada da `Presentation`, Entities, modelos de APIs externas e mensagens de saída da `Data` não podem atravessar os limites dos módulos. O `Model` do Core é o único modelo que trafega entre `Presentation`, `Service` e `Datastore`.
+Cada camada possui seus próprios modelos. DTOs, Types e Events de entrada da `Presentation`, Entities, modelos de APIs externas e mensagens de saída da `Data` não podem atravessar os limites das camadas. O `Model` do Core é o único modelo que trafega entre `Presentation`, `Service` e `Datastore`.
 
 As conversões ocorrem nas fronteiras, com o `Model` do Core como pivô:
 
@@ -249,7 +249,7 @@ Cada camada deve criar e tratar somente os erros que pertencem ao seu contexto. 
 | Datastore | Erro de conversão ou integração | Traduzir falhas técnicas da Data para uma exceção de infraestrutura conhecida pelo Service |
 | Data | Falha de banco, API externa ou mensageria | Registrar o detalhe técnico, preservar a causa e lançar uma exceção específica da fonte |
 
-O fluxo de tratamento deve seguir a fronteira de cada módulo:
+O fluxo de tratamento deve seguir a fronteira de cada camada:
 
 ```text
 Data exception
@@ -363,7 +363,7 @@ Regras para transações:
 
 ## Mappers
 
-Toda conversão entre modelos de módulos diferentes deve ser centralizada em um componente de mapeamento dedicado — um mapper nomeado (`UserMapper`, `UserEntityMapper`) ou o `Mapper<Source, Model>` genérico injetado. Controllers, MessageListeners, Services, UseCases, Datastores, Repositories, ApiClients e MessagePublishers não devem copiar atributos à mão nem aplicar regra de conversão em seus métodos de negócio ou de acesso a dados; podem chamar `toModel`/`fromModel` de um mapper injetado.
+Toda conversão entre modelos de camadas diferentes deve ser centralizada em um componente de mapeamento dedicado — um mapper nomeado (`UserMapper`, `UserEntityMapper`) ou o `Mapper<Source, Model>` genérico injetado. Controllers, MessageListeners, Services, UseCases, Datastores, Repositories, ApiClients e MessagePublishers não devem copiar atributos à mão nem aplicar regra de conversão em seus métodos de negócio ou de acesso a dados; podem chamar `toModel`/`fromModel` de um mapper injetado.
 
 Os mappers ficam na fronteira que controlam e são os únicos componentes autorizados a conhecer os dois modelos envolvidos na conversão:
 
@@ -377,7 +377,7 @@ Os mappers ficam na fronteira que controlam e são os únicos componentes autori
 
 A fronteira Presentation↔Core fica em `presentation.mapper`; a fronteira Core↔Data fica em `data.mapper`. O `Model` do Core é o pivô entre as duas: nenhum mapper conhece `DTO` e `Entity` ao mesmo tempo. Os mappers de `presentation.mapper` são chamados pelos adaptadores de entrada (Controller, `MessageListener`) antes e depois da chamada ao `Service`; o `Service` nunca os utiliza. Os mappers de `data.mapper` são usados pela implementação do `Datastore` e não saem da `Data`.
 
-Um mapper pode receber e devolver modelos de módulos adjacentes somente durante a conversão. Esses tipos não podem ser armazenados, retornados ou expostos pelos contratos públicos de módulos além da fronteira. O restante da aplicação utiliza apenas o modelo pertencente ao seu próprio módulo.
+Um mapper pode receber e devolver modelos de camadas adjacentes somente durante a conversão. Esses tipos não podem ser armazenados, retornados ou expostos pelos contratos públicos de camadas além da fronteira. O restante da aplicação utiliza apenas o modelo pertencente à sua própria camada.
 
 ### Mapper Genérico
 
@@ -428,7 +428,7 @@ Se a operação puder ser implementada apenas com uma chamada ao Datastore, não
   - **Validações**: Responsável por validar invariantes, regras de negócio e consistência do domínio. Essas validações devem ser independentes da forma de entrada e da tecnologia de persistência.
   - **Transações**: Não abre, confirma, reverte ou configura transações. O UseCase expressa a unidade lógica da operação por meio de sua regra, mas a transação é controlada pelo Service.
   - **Erros**: Deve lançar exceções de domínio para violações de regras e invariantes. Não pode depender de códigos HTTP, exceções de banco ou frameworks de infraestrutura.
-  - **UseCase**: Representa uma operação de negócio específica, encapsulando a lógica necessária para processar um ou mais Models. Recebe um Model por parâmetro e devolve o Model processado. Deve ser stateless e não manter estado mutável entre chamadas; o estado da operação deve estar nos Models recebidos e retornados. Não acessa Datastore, Repository, APIs externas, filas ou qualquer outra infraestrutura. Deve ser nomeado com o sufixo "UseCase" (ex: UserUseCase). Em situações simples, pode agrupar operações intimamente relacionadas desde que mantenha uma única responsabilidade. Quando a regra altera um atributo do Model, o UseCase decide o novo valor e obtém uma nova instância do Model com esse valor atualizado — por exemplo, por um método do próprio Model dedicado à transição (um "wither", como `comStatus(novoStatus)`) — em vez de mutar o Model recebido.
+  - **UseCase**: Representa uma operação de negócio específica, encapsulando a lógica necessária para processar um ou mais Models. Recebe um Model por parâmetro e devolve o Model processado. Deve ser stateless e não manter estado mutável entre chamadas; o estado da operação deve estar nos Models recebidos e retornados. Não acessa Datastore, Repository, APIs externas, filas ou qualquer outra infraestrutura. Deve ser nomeado com o sufixo "UseCase" (ex: UserUseCase). Em situações simples, pode agrupar mais de uma operação apenas quando elas compõem a mesma regra de negócio (ex.: validar e calcular a mesma transição); operações independentes devem ficar em UseCases separados. Quando a regra altera um atributo do Model, o UseCase decide o novo valor e obtém uma nova instância do Model com esse valor atualizado — por exemplo, por um método do próprio Model dedicado à transição (um "wither", como `comStatus(novoStatus)`) — em vez de mutar o Model recebido.
   - **Visibilidade**: O Core pode ser utilizado pela Presentation (Models), pelo Service e pelo Datastore. Essa visibilidade é unidirecional: o Core não pode importar ou depender dessas camadas. Models do Core não podem conter DTOs, Types, Events, Entities, modelos de APIs externas ou mensagens de saída.
 
 - **Datastore**: É uma camada intermediária entre "Service" e "Data", responsável por consumir a fonte de dados adequada e utilizar os mappers de `data.mapper` para converter os Models do Core para os modelos da Data e vice-versa. Pode consumir internamente Repositories, ApiClients e componentes de mensageria, sem expor qual origem foi utilizada. Recebe um Model do Service, usa o mapper apropriado para convertê-lo ao modelo externo, acessa a origem e converte o resultado de volta para um Model antes de retorná-lo ao Service. O Datastore não é utilizado diretamente pelo UseCase.
